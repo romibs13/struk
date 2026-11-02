@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Struk Keuangan</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#6d6df5">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--ink:#12142b;--muted:#6b7090;--line:rgba(99,102,241,.16);--grad:linear-gradient(135deg,#4f7cff,#8b5cf6)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);min-height:100vh;
+  background:radial-gradient(520px 320px at 92% -60px,rgba(139,92,246,.16),transparent 70%),radial-gradient(480px 300px at -10% 8%,rgba(79,124,255,.14),transparent 70%),#fff}
+main{max-width:480px;margin:0 auto;padding:calc(28px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom))}
+.logo{width:64px;height:64px;border-radius:20px;display:block;box-shadow:0 14px 30px rgba(99,102,241,.35)}
+h1{margin:16px 0 4px;font-size:26px;letter-spacing:-.4px}
+p.sub{margin:0 0 22px;color:var(--muted);font-size:14.5px;line-height:1.5}
+.card{background:rgba(255,255,255,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:22px;box-shadow:0 10px 30px rgba(79,92,220,.1);padding:20px}
+label{display:block;margin:14px 2px 6px;font-size:12.5px;font-weight:700;color:var(--muted)}
+label:first-child{margin-top:0}
+input[type=text],input[type=url]{width:100%;padding:13px 14px;border-radius:14px;border:1.5px solid transparent;background:#f5f6ff;font-size:16px;outline:0;color:var(--ink)}
+input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,131,255,.15)}
+.btn{width:100%;height:54px;margin-top:18px;border-radius:18px;background:var(--grad);color:#fff;font:inherit;font-weight:800;font-size:16.5px;border:0;box-shadow:0 14px 28px rgba(99,102,241,.35);cursor:pointer}
+.btn.ghost{background:#eef0fb;color:#4a4f8a;box-shadow:none}
+.link{display:block;margin:16px auto 0;background:none;border:0;font:inherit;font-size:13.5px;font-weight:600;color:#6d6df5;cursor:pointer}
+.err{color:#e8456b;font-size:13px;font-weight:600;margin:8px 2px 0;min-height:0}
+.state{text-align:center;padding:10px 4px}
+.state .ico{font-size:52px;line-height:1}
+.state h2{margin:12px 0 4px;font-size:19px}
+.state p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.5}
+.state img{max-width:46%;max-height:190px;border-radius:14px;border:1px solid var(--line);margin-top:16px}
+.spin{width:44px;height:44px;margin:0 auto;border-radius:50%;border:5px solid #e3e6fb;border-top-color:#8b5cf6;animation:r .8s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+.tip{margin-top:18px;font-size:13px;color:var(--muted);line-height:1.6;text-align:center}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="icon-192.png" alt="">
+  <h1>Struk Keuangan</h1>
+  <p class="sub">Bagikan screenshot struk atau bukti transfer ke sini, dan langsung tercatat di Keuangan Kita.</p>
+
+  <section id="setup" class="card" hidden>
+    <label for="inUrl">Alamat pengiriman (dari langkah deploy kedua)</label>
+    <input id="inUrl" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+    <label for="inTok">Token milikmu</label>
+    <input id="inTok" type="text" placeholder="Tempel token di sini" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="err" id="setupErr"></div>
+    <button class="btn" id="btnSetup">Simpan</button>
+  </section>
+
+  <section id="main" hidden>
+    <div class="card"><div class="state" id="state"></div></div>
+    <input type="file" id="file" accept="image/*" hidden>
+    <button class="btn ghost" id="btnPick">Pilih gambar dari galeri</button>
+    <div class="tip">Cara cepat: ambil screenshot, ketuk <b>Bagikan</b>, lalu pilih <b>Struk Keuangan</b>.</div>
+    <button class="link" id="btnReset">Ubah pengaturan</button>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var LS = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  var URL_OK = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/;
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+
+  function tampil(id) {
+    $('#setup').hidden = id !== 'setup';
+    $('#main').hidden = id !== 'main';
+  }
+  function setState(tipe, judul, isi, gambar) {
+    var ico = { busy: '<div class="spin"></div>', ok: '<div class="ico">✅</div>', warn: '<div class="ico">⚠️</div>', err: '<div class="ico">❌</div>', idle: '<div class="ico">🧾</div>' }[tipe];
+    var el = $('#state');
+    el.innerHTML = ico + '<h2></h2><p></p>';
+    el.querySelector('h2').textContent = judul;
+    el.querySelector('p').textContent = isi || '';
+    if (gambar) { var im = document.createElement('img'); im.alt = ''; im.src = gambar; el.appendChild(im); }
+  }
+
+  /* Setup lewat link: ...kirim.html#url=ALAMAT&token=TOKEN */
+  function bacaHash() {
+    var h = (location.hash || '').replace(/^#/, '');
+    if (!h) return;
+    var p = new URLSearchParams(h), u = p.get('url'), t = p.get('token');
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    if (u && t && URL_OK.test(u.trim()) && t.trim().length >= 20) {
+      LS.set('kk_url', u.trim()); LS.set('kk_token', t.trim());
+    }
+  }
+
+  function simpanSetup() {
+    var u = $('#inUrl').value.trim(), t = $('#inTok').value.trim();
+    var err = $('#setupErr'); err.textContent = '';
+    if (!URL_OK.test(u)) { err.textContent = 'Alamat harus berbentuk https://script.google.com/macros/s/…/exec'; return; }
+    if (t.length < 20) { err.textContent = 'Token terlalu pendek. Salin utuh dari Execution log.'; return; }
+    LS.set('kk_url', u); LS.set('kk_token', t);
+    mulai();
+  }
+
+  /* Gambar yang dibagikan disimpan service worker di cache */
+  function ambilBagikan() {
+    if (!window.caches) return Promise.resolve(null);
+    return caches.open('kk-share').then(function (c) {
+      var key = new URL('shared-image', location.href).href;
+      return c.match(key).then(function (r) {
+        if (!r) return null;
+        return r.blob().then(function (b) { return c.delete(key).then(function () { return b; }); });
+      });
+    }).catch(function () { return null; });
+  }
+
+  /* Kecilkan gambar (maks 1400 px, JPEG) lalu jadikan base64 */
+  function kompres(blob) {
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onerror = function () { reject(new Error('File tidak bisa dibaca.')); };
+      fr.onload = function () {
+        var dataUrl = fr.result, img = new Image();
+        img.onerror = function () { reject(new Error('Gambar tidak bisa dibuka.')); };
+        img.onload = function () {
+          try {
+            var sc = Math.min(1, 1400 / Math.max(img.width, img.height));
+            var w = Math.round(img.width * sc), h = Math.round(img.height * sc);
+            var c = document.createElement('canvas'); c.width = w; c.height = h;
+            var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h);
+            resolve(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+          } catch (e) { reject(new Error('Gambar tidak bisa diproses.')); }
+        };
+        img.src = dataUrl;
+      };
+      fr.readAsDataURL(blob);
+    });
+  }
+
+  function kirim(blob) {
+    var url = LS.get('kk_url'), token = LS.get('kk_token');
+    var pv = null;
+    try { pv = URL.createObjectURL(blob); } catch (e) {}
+    setState('busy', 'Membaca struk…', 'Biasanya 3–8 detik. Jangan tutup halaman ini.', pv);
+    return kompres(blob).then(function (b64) {
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // tanpa preflight CORS
+        body: JSON.stringify({ token: token, gambar: b64 })
+      });
+    }).then(function (res) { return res.json(); }).then(function (j) {
+      if (j && j.ok) setState(j.duplikat ? 'warn' : 'ok', j.duplikat ? 'Sudah pernah dikirim' : 'Tercatat!', j.pesan);
+      else setState('err', 'Belum tercatat', (j && j.pesan) || 'Terjadi kesalahan. Coba lagi atau catat manual di aplikasi.');
+    }).catch(function (e) {
+      var msg = e && /dibaca|dibuka|diproses/.test(e.message) ? e.message : 'Tidak bisa terhubung. Periksa internet, alamat, dan token di "Ubah pengaturan".';
+      setState('err', 'Belum tercatat', msg);
+    }).then(function () { if (pv) { try { URL.revokeObjectURL(pv); } catch (e) {} } });
+  }
+
+  function mulai() {
+    if (!LS.get('kk_url') || !LS.get('kk_token')) { tampil('setup'); return Promise.resolve(); }
+    tampil('main');
+    var q = new URLSearchParams(location.search);
+    if (q.get('shared')) {
+      try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      return ambilBagikan().then(function (b) {
+        if (b) return kirim(b);
+        setState('warn', 'Gambar tidak diterima', 'Coba bagikan lagi, atau pilih gambar dari galeri di bawah.');
+      });
+    }
+    setState('idle', 'Siap menerima struk', 'Bagikan screenshot ke aplikasi ini, atau pilih dari galeri.');
+    return Promise.resolve();
+  }
+
+  $('#btnSetup').addEventListener('click', simpanSetup);
+  $('#btnPick').addEventListener('click', function () { $('#file').click(); });
+  $('#file').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (f) kirim(f).then(function () { $('#file').value = ''; });
+  });
+  $('#btnReset').addEventListener('click', function () {
+    $('#inUrl').value = LS.get('kk_url') || ''; $('#inTok').value = LS.get('kk_token') || '';
+    tampil('setup');
+  });
+
+  bacaHash();
+  window.__mulai = mulai;
+  mulai();
+})();
+</script>
+</body>
+</html>
