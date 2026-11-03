@@ -35,6 +35,31 @@ input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,1
 .spin{width:44px;height:44px;margin:0 auto;border-radius:50%;border:5px solid #e3e6fb;border-top-color:#8b5cf6;animation:r .8s linear infinite}
 @keyframes r{to{transform:rotate(360deg)}}
 .tip{margin-top:18px;font-size:13px;color:var(--muted);line-height:1.6;text-align:center}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:#eef0fb;border-radius:16px;padding:4px;margin-bottom:14px}
+.tabs button{border:0;background:none;font:inherit;font-weight:700;font-size:14.5px;padding:11px;border-radius:12px;color:var(--muted);cursor:pointer}
+.tabs button.on{background:#fff;color:var(--ink);box-shadow:0 3px 10px rgba(80,90,200,.18)}
+.mic{display:grid;place-items:center;width:92px;height:92px;margin:18px auto 0;border-radius:50%;border:0;background:var(--grad);color:#fff;font-size:38px;cursor:pointer;box-shadow:0 16px 34px rgba(99,102,241,.4);transition:transform .2s}
+.mic:active{transform:scale(.94)}
+.mic:disabled{opacity:.55}
+.mic.rec{background:linear-gradient(135deg,#e8456b,#f0627f);animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(232,69,107,.5)}100%{box-shadow:0 0 0 26px rgba(232,69,107,0)}}
+.vtip{margin-top:14px;font-size:13px;color:var(--muted);line-height:1.6;text-align:center}
+.vrow{display:flex;gap:8px;margin-top:6px}
+.vrow input{flex:1;min-width:0}
+.vrow button{flex:0 0 auto;padding:0 18px;border-radius:14px;border:0;background:#eef0fb;color:#4a4f8a;font:inherit;font-weight:700;cursor:pointer}
+.sep{margin:22px 2px 0;font-size:12.5px;font-weight:700;color:var(--muted)}
+.dc{margin-top:12px;background:rgba(255,255,255,.85);border:1px solid var(--line);border-radius:20px;box-shadow:0 8px 24px rgba(79,92,220,.09);padding:14px}
+.dc-top{display:flex;gap:8px;align-items:center}
+.dc select,.dc input{width:100%;padding:11px 12px;border-radius:12px;border:1.5px solid transparent;background:#f5f6ff;font:inherit;font-size:16px;color:var(--ink);outline:0}
+.dc select:focus,.dc input:focus{background:#fff;border-color:#7c83ff}
+.dc .dj{flex:1}
+.dx{flex:0 0 40px;height:40px;border-radius:12px;border:0;background:#fdecef;color:#e8456b;font-size:16px;font-weight:700;cursor:pointer}
+.amt2{display:flex;align-items:center;gap:8px;margin-top:10px;background:#f5f6ff;border-radius:14px;padding:4px 14px}
+.amt2 span{font-weight:700;color:var(--muted)}
+.amt2 input{background:none!important;font-size:24px;font-weight:800;padding:8px 0}
+.dc .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.dc .dcat{margin-top:10px}
+.heard{margin:14px 2px 0;font-size:13px;color:var(--muted);line-height:1.5;font-style:italic}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -54,10 +79,37 @@ input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,1
   </section>
 
   <section id="main" hidden>
-    <div class="card"><div class="state" id="state"></div></div>
-    <input type="file" id="file" accept="image/*" hidden>
-    <button class="btn ghost" id="btnPick">Pilih gambar dari galeri</button>
-    <div class="tip">Cara cepat: ambil screenshot, ketuk <b>Bagikan</b>, lalu pilih <b>Struk Keuangan</b>.</div>
+    <div class="tabs" id="tabs" role="tablist">
+      <button data-t="struk" class="on" role="tab">🧾 Struk</button>
+      <button data-t="suara" role="tab">🎤 Suara</button>
+    </div>
+
+    <div id="pStruk">
+      <div class="card"><div class="state" id="state"></div></div>
+      <input type="file" id="file" accept="image/*" hidden>
+      <button class="btn ghost" id="btnPick">Pilih gambar dari galeri</button>
+      <div class="tip">Cara cepat: ambil screenshot, ketuk <b>Bagikan</b>, lalu pilih <b>Struk Keuangan</b>.</div>
+    </div>
+
+    <div id="pSuara" hidden>
+      <div class="card"><div class="state" id="vstate" aria-live="polite"></div></div>
+      <button class="mic" id="btnMic" aria-label="Mulai merekam">🎤</button>
+      <div class="vtip">Contoh: <b>“makan siang dua puluh lima ribu dan bensin tiga puluh ribu”</b>. Bisa lebih dari satu transaksi sekaligus.</div>
+
+      <div id="draf" hidden>
+        <div class="heard" id="heard"></div>
+        <div id="drafList"></div>
+        <button class="btn" id="btnSimpanDraf">Simpan semua</button>
+        <button class="btn ghost" id="btnUlangDraf">Ulangi</button>
+      </div>
+
+      <div class="sep">Atau ketik saja</div>
+      <div class="vrow">
+        <input id="vText" type="text" placeholder="mis. kopi 20 ribu tadi pagi" maxlength="300" autocomplete="off">
+        <button id="btnVText" type="button">Baca</button>
+      </div>
+    </div>
+
     <button class="link" id="btnNotif" hidden>🔔 Aktifkan notifikasi hasil</button>
     <button class="link" id="btnReset">Ubah pengaturan</button>
   </section>
@@ -67,6 +119,7 @@ input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,1
 (function () {
   'use strict';
   var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
   var LS = {
     get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -79,9 +132,9 @@ input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,1
     $('#setup').hidden = id !== 'setup';
     $('#main').hidden = id !== 'main';
   }
-  function setState(tipe, judul, isi, gambar) {
+  function setState(tipe, judul, isi, gambar, sel) {
     var ico = { busy: '<div class="spin"></div>', ok: '<div class="ico">✅</div>', warn: '<div class="ico">⚠️</div>', err: '<div class="ico">❌</div>', idle: '<div class="ico">🧾</div>' }[tipe];
-    var el = $('#state');
+    var el = $(sel || '#state');
     el.innerHTML = ico + '<h2></h2><p></p>';
     el.querySelector('h2').textContent = judul;
     el.querySelector('p').textContent = isi || '';
@@ -163,6 +216,190 @@ input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,1
     }).then(function () { if (pv) { try { URL.revokeObjectURL(pv); } catch (e) {} } });
   }
 
+  /* ---------- Tab ---------- */
+  function gantiTab(t) {
+    if (t !== 'suara') t = 'struk';
+    $('#pStruk').hidden = t !== 'struk';
+    $('#pSuara').hidden = t !== 'suara';
+    $$('#tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === t); });
+    LS.set('kk_tab', t);
+    if (t === 'suara' && !V.mulaiUI) { V.mulaiUI = true; setV('idle', 'Siap mencatat dengan suara', 'Ketuk tombol mikrofon, lalu bicara.'); }
+  }
+
+  /* ---------- Suara ---------- */
+  var V = { rec: null, stream: null, chunks: [], timer: null, t0: 0, mime: '', kunci: '', kat: { pemasukan: [], pengeluaran: [] }, busy: false, mulaiUI: false };
+  var setV = function (tipe, judul, isi) { setState(tipe, judul, isi, null, '#vstate'); };
+  var fmtNum = function (n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+  function el(tag, props, kids) {
+    var e = document.createElement(tag);
+    Object.keys(props || {}).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else e.setAttribute(k, props[k]); });
+    (kids || []).forEach(function (c) { e.appendChild(c); });
+    return e;
+  }
+  function post(body) {
+    var o = { token: LS.get('kk_token') };
+    Object.keys(body).forEach(function (k) { o[k] = body[k]; });
+    return fetch(LS.get('kk_url'), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(o) })
+      .then(function (r) { return r.json(); });
+  }
+  function setBusy(on) { V.busy = on; $('#btnMic').disabled = on; $('#btnVText').disabled = on; $('#btnSimpanDraf').disabled = on; }
+  var PESAN_JARINGAN = 'Tidak bisa terhubung. Periksa internet, alamat, dan token di "Ubah pengaturan".';
+
+  function pilihMime() {
+    var daftar = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+    for (var i = 0; i < daftar.length; i++) {
+      try { if (MediaRecorder.isTypeSupported(daftar[i])) return daftar[i]; } catch (e) {}
+    }
+    return '';
+  }
+  function matikanMic() {
+    if (V.stream) { try { V.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} }
+    V.stream = null;
+  }
+  function tampilMic(rekam) {
+    var b = $('#btnMic');
+    b.classList.toggle('rec', rekam);
+    b.textContent = rekam ? '⏹' : '🎤';
+    b.setAttribute('aria-label', rekam ? 'Selesai merekam' : 'Mulai merekam');
+  }
+
+  function mulaiRekam() {
+    if (V.busy) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+      setV('warn', 'Perekam tidak didukung', 'Ketik transaksinya di kolom bawah, misalnya "kopi 20 ribu".');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      V.stream = stream; V.chunks = [];
+      var tipe = pilihMime();
+      var rec = tipe ? new MediaRecorder(stream, { mimeType: tipe }) : new MediaRecorder(stream);
+      V.mime = rec.mimeType || tipe || 'audio/webm';
+      rec.ondataavailable = function (e) { if (e.data && e.data.size) V.chunks.push(e.data); };
+      rec.onstop = selesaiRekam;
+      rec.start();
+      V.rec = rec; V.t0 = Date.now();
+      tampilMic(true);
+      setV('busy', 'Merekam… 0:00', 'Bicara sekarang. Ketuk tombol merah bila selesai.');
+      clearInterval(V.timer);
+      V.timer = setInterval(function () {
+        var d = Math.floor((Date.now() - V.t0) / 1000);
+        if (d >= 30) { berhentiRekam(); return; }
+        setV('busy', 'Merekam… ' + Math.floor(d / 60) + ':' + ('0' + (d % 60)).slice(-2), 'Bicara sekarang. Ketuk tombol merah bila selesai.');
+      }, 250);
+    }).catch(function (err) {
+      matikanMic();
+      var ditolak = err && /NotAllowed|Permission|Security/i.test(err.name || '');
+      setV('err', ditolak ? 'Mikrofon belum diizinkan' : 'Mikrofon tidak bisa dipakai',
+        ditolak ? 'Izinkan mikrofon untuk aplikasi ini di pengaturan Chrome, atau ketik transaksinya di kolom bawah.' : 'Ketik transaksinya di kolom bawah.');
+    });
+  }
+  function berhentiRekam() {
+    clearInterval(V.timer);
+    if (V.rec && V.rec.state !== 'inactive') V.rec.stop(); else selesaiRekam();
+  }
+  function selesaiRekam() {
+    clearInterval(V.timer);
+    matikanMic(); tampilMic(false);
+    var lama = Date.now() - V.t0;
+    var blob = new Blob(V.chunks, { type: (V.mime || 'audio/webm').split(';')[0] });
+    V.rec = null;
+    if (lama < 600 || blob.size < 500) { setV('warn', 'Rekaman terlalu singkat', 'Ketuk mikrofon, bicara, lalu ketuk lagi untuk selesai.'); return; }
+    kirimSuara(blob);
+  }
+
+  function kirimSuara(blob) {
+    setBusy(true);
+    setV('busy', 'Mendengarkan…', 'Biasanya 3–8 detik.');
+    sembunyikanDraf();
+    var fr = new FileReader();
+    fr.onerror = function () { setBusy(false); setV('err', 'Rekaman tidak terbaca', 'Coba rekam lagi.'); };
+    fr.onload = function () {
+      post({ aksi: 'suara', audio: String(fr.result).split(',')[1], mime: blob.type })
+        .then(hasilUcapan).catch(function () { setV('err', 'Belum bisa diproses', PESAN_JARINGAN); }).then(function () { setBusy(false); });
+    };
+    fr.readAsDataURL(blob);
+  }
+  function kirimTeks() {
+    if (V.busy) return;
+    var t = $('#vText').value.trim();
+    if (!t) { setV('warn', 'Kolom masih kosong', 'Ketik transaksinya, misalnya "kopi 20 ribu tadi pagi".'); return; }
+    setBusy(true); sembunyikanDraf();
+    setV('busy', 'Membaca…', 'Biasanya 2–5 detik.');
+    post({ aksi: 'teks', teks: t }).then(hasilUcapan)
+      .catch(function () { setV('err', 'Belum bisa diproses', PESAN_JARINGAN); }).then(function () { setBusy(false); });
+  }
+  function hasilUcapan(r) {
+    if (!r || !r.ok || !r.draf || !r.draf.length) {
+      setV('warn', 'Belum ada transaksi yang terbaca', (r && r.pesan) || 'Coba ucapkan lagi dengan nominal yang jelas.');
+      if (r && r.transkrip) { $('#heard').textContent = 'Terdengar: “' + r.transkrip + '”'; }
+      return;
+    }
+    V.kat = r.kategori || V.kat;
+    V.kunci = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    $('#heard').textContent = r.transkrip ? 'Terdengar: “' + r.transkrip + '”' : '';
+    var box = $('#drafList'); box.innerHTML = '';
+    r.draf.forEach(function (t) { box.appendChild(kartu(t)); });
+    $('#draf').hidden = false;
+    setV('idle', r.draf.length + ' transaksi terbaca', 'Periksa dulu, ubah bila perlu, lalu ketuk Simpan semua.');
+  }
+  function sembunyikanDraf() { $('#draf').hidden = true; $('#drafList').innerHTML = ''; }
+
+  function isiKategori(sel, jenis, pilih) {
+    var list = (V.kat[jenis] || []).slice();
+    if (pilih && list.indexOf(pilih) < 0) list.push(pilih);
+    sel.innerHTML = '';
+    list.forEach(function (k) { sel.appendChild(el('option', { value: k, text: k })); });
+    sel.value = pilih || (list.indexOf('Lainnya') >= 0 ? 'Lainnya' : (list[0] || ''));
+  }
+  function kartu(t) {
+    var selJ = el('select', { 'class': 'dj', 'aria-label': 'Jenis' });
+    [['pengeluaran', 'Pengeluaran'], ['pemasukan', 'Pemasukan']].forEach(function (o) { selJ.appendChild(el('option', { value: o[0], text: o[1] })); });
+    selJ.value = t.jenis;
+    var hapus = el('button', { 'class': 'dx', type: 'button', 'aria-label': 'Hapus baris ini', text: '✕' });
+    var nom = el('input', { 'class': 'dn', inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Nominal' });
+    nom.value = fmtNum(t.nominal);
+    var selK = el('select', { 'class': 'dk', 'aria-label': 'Kategori' });
+    isiKategori(selK, t.jenis, t.kategori);
+    var tgl = el('input', { 'class': 'dt', type: 'date', 'aria-label': 'Tanggal' });
+    tgl.value = t.tanggal;
+    var cat = el('input', { 'class': 'dcat', maxlength: '100', placeholder: 'Catatan', 'aria-label': 'Catatan' });
+    cat.value = t.catatan || '';
+    return el('div', { 'class': 'dc' }, [
+      el('div', { 'class': 'dc-top' }, [selJ, hapus]),
+      el('div', { 'class': 'amt2' }, [el('span', { text: 'Rp' }), nom]),
+      el('div', { 'class': 'row2' }, [selK, tgl]),
+      cat
+    ]);
+  }
+  function bacaDraf() {
+    var out = [], err = '';
+    $$('#drafList .dc').forEach(function (c) {
+      var nom = parseInt(c.querySelector('.dn').value.replace(/\D/g, ''), 10) || 0;
+      var tg = c.querySelector('.dt').value;
+      if (nom <= 0) err = 'Nominal tidak boleh kosong atau 0.';
+      else if (!/^\d{4}-\d{2}-\d{2}$/.test(tg)) err = 'Tanggal tidak valid.';
+      out.push({ jenis: c.querySelector('.dj').value, nominal: nom, tanggal: tg, kategori: c.querySelector('.dk').value || 'Lainnya', catatan: c.querySelector('.dcat').value.trim() });
+    });
+    return { out: out, err: err };
+  }
+  function simpanDraf() {
+    if (V.busy) return;
+    var d = bacaDraf();
+    if (!d.out.length) { sembunyikanDraf(); return; }
+    if (d.err) { setV('warn', 'Periksa lagi', d.err); return; }
+    setBusy(true);
+    setV('busy', 'Menyimpan…', '');
+    post({ aksi: 'simpan', draf: d.out, kunci: V.kunci }).then(function (j) {
+      if (j && j.ok) {
+        sembunyikanDraf(); $('#vText').value = '';
+        setV(j.duplikat ? 'warn' : 'ok', j.duplikat ? 'Sudah tersimpan' : 'Tersimpan!', j.pesan);
+      } else {
+        setV('err', 'Belum tersimpan', (j && j.pesan) || 'Terjadi kesalahan. Data di bawah masih ada, coba simpan lagi.');
+      }
+    }).catch(function () { setV('err', 'Belum tersimpan', PESAN_JARINGAN + ' Data di bawah masih ada.'); })
+      .then(function () { setBusy(false); });
+  }
+
   /* Salin pengaturan ke Cache supaya service worker (pengirim latar belakang) bisa membacanya */
   function sinkronConfig() {
     if (!window.caches) return;
@@ -205,6 +442,7 @@ input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,1
     sinkronConfig();
     siapkanNotif();
     var q = new URLSearchParams(location.search);
+    gantiTab(q.get('bg') || q.get('shared') ? 'struk' : (q.get('mode') === 'suara' ? 'suara' : (LS.get('kk_tab') || 'struk')));
     if (q.get('bg')) {
       var id = q.get('bg');
       try { history.replaceState(null, '', location.pathname); } catch (e) {}
@@ -227,6 +465,27 @@ input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,1
   $('#file').addEventListener('change', function (e) {
     var f = e.target.files && e.target.files[0];
     if (f) kirim(f).then(function () { $('#file').value = ''; });
+  });
+  $('#tabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) gantiTab(b.dataset.t); });
+  $('#btnMic').addEventListener('click', function () { if (V.rec) berhentiRekam(); else mulaiRekam(); });
+  $('#btnVText').addEventListener('click', kirimTeks);
+  $('#vText').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); kirimTeks(); } });
+  $('#btnSimpanDraf').addEventListener('click', simpanDraf);
+  $('#btnUlangDraf').addEventListener('click', function () { sembunyikanDraf(); setV('idle', 'Siap mencatat dengan suara', 'Ketuk tombol mikrofon, lalu bicara.'); });
+  $('#drafList').addEventListener('click', function (e) {
+    var x = e.target.closest('.dx'); if (!x) return;
+    x.closest('.dc').remove();
+    if (!$$('#drafList .dc').length) { sembunyikanDraf(); setV('idle', 'Siap mencatat dengan suara', 'Ketuk tombol mikrofon, lalu bicara.'); }
+  });
+  $('#drafList').addEventListener('change', function (e) {
+    if (!e.target.classList.contains('dj')) return;
+    var c = e.target.closest('.dc');
+    isiKategori(c.querySelector('.dk'), e.target.value, '');
+  });
+  $('#drafList').addEventListener('input', function (e) {
+    if (!e.target.classList.contains('dn')) return;
+    var d = e.target.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 13);
+    e.target.value = d ? fmtNum(+d) : '';
   });
   $('#btnNotif').addEventListener('click', function () {
     if (!window.Notification) return;
