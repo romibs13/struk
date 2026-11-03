@@ -58,6 +58,7 @@ input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,1
     <input type="file" id="file" accept="image/*" hidden>
     <button class="btn ghost" id="btnPick">Pilih gambar dari galeri</button>
     <div class="tip">Cara cepat: ambil screenshot, ketuk <b>Bagikan</b>, lalu pilih <b>Struk Keuangan</b>.</div>
+    <button class="link" id="btnNotif" hidden>🔔 Aktifkan notifikasi hasil</button>
     <button class="link" id="btnReset">Ubah pengaturan</button>
   </section>
 </main>
@@ -162,10 +163,54 @@ input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,1
     }).then(function () { if (pv) { try { URL.revokeObjectURL(pv); } catch (e) {} } });
   }
 
+  /* Salin pengaturan ke Cache supaya service worker (pengirim latar belakang) bisa membacanya */
+  function sinkronConfig() {
+    if (!window.caches) return;
+    var data = JSON.stringify({ url: LS.get('kk_url'), token: LS.get('kk_token') });
+    caches.open('kk-config').then(function (c) {
+      return c.put(new URL('kk-config.json', location.href).href, new Response(data, { headers: { 'Content-Type': 'application/json' } }));
+    }).catch(function () {});
+  }
+
+  function siapkanNotif() {
+    var b = $('#btnNotif');
+    b.hidden = !(window.Notification && Notification.permission === 'default');
+  }
+
+  /* Halaman setelah Bagikan: pengiriman berjalan di latar belakang, hasilnya ditunggu sebentar */
+  function tungguHasil(id) {
+    setState('busy', 'Dikirim di latar belakang', 'Kamu boleh pindah ke aplikasi lain. Hasilnya muncul di notifikasi.');
+    var n = 0;
+    var timer = setInterval(function () {
+      n++;
+      var selesai = function () { clearInterval(timer); };
+      if (!window.caches) { selesai(); return; }
+      caches.open('kk-config').then(function (c) {
+        return c.match(new URL('kk-hasil.json', location.href).href);
+      }).then(function (r) { return r ? r.json() : null; }).then(function (h) {
+        if (h && h.id === id) {
+          selesai();
+          setState(h.ok ? (/^Sudah/.test(h.judul) ? 'warn' : 'ok') : 'err', h.judul, h.pesan);
+        } else if (n >= 40) {
+          selesai();
+          setState('warn', 'Belum ada kabar', 'Periksa notifikasi atau sheet. Kalau belum tercatat, bagikan lagi.');
+        }
+      }).catch(function () {});
+    }, 700);
+  }
+
   function mulai() {
     if (!LS.get('kk_url') || !LS.get('kk_token')) { tampil('setup'); return Promise.resolve(); }
     tampil('main');
+    sinkronConfig();
+    siapkanNotif();
     var q = new URLSearchParams(location.search);
+    if (q.get('bg')) {
+      var id = q.get('bg');
+      try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      tungguHasil(id);
+      return Promise.resolve();
+    }
     if (q.get('shared')) {
       try { history.replaceState(null, '', location.pathname); } catch (e) {}
       return ambilBagikan().then(function (b) {
@@ -182,6 +227,10 @@ input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,1
   $('#file').addEventListener('change', function (e) {
     var f = e.target.files && e.target.files[0];
     if (f) kirim(f).then(function () { $('#file').value = ''; });
+  });
+  $('#btnNotif').addEventListener('click', function () {
+    if (!window.Notification) return;
+    Notification.requestPermission().then(function () { siapkanNotif(); });
   });
   $('#btnReset').addEventListener('click', function () {
     $('#inUrl').value = LS.get('kk_url') || ''; $('#inTok').value = LS.get('kk_token') || '';
