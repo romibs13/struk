@@ -87,8 +87,10 @@ input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,1
     <div id="pStruk">
       <div class="card"><div class="state" id="state"></div></div>
       <input type="file" id="file" accept="image/*" hidden>
+      <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
+      <button class="btn" id="btnCam">📷 Foto struk dengan kamera</button>
       <button class="btn ghost" id="btnPick">Pilih gambar dari galeri</button>
-      <div class="tip">Cara cepat: ambil screenshot, ketuk <b>Bagikan</b>, lalu pilih <b>Struk Keuangan</b>.</div>
+      <div class="tip">Struk kertas: ketuk <b>Foto struk</b>, arahkan kamera, lalu ambil foto.<br>Struk online atau bukti transfer: ambil screenshot, ketuk <b>Bagikan</b>, lalu pilih <b>Struk Keuangan</b>.</div>
     </div>
 
     <div id="pSuara" hidden>
@@ -456,15 +458,18 @@ input:focus{background:#fff;border-color:#7c83ff;box-shadow:0 0 0 4px rgba(124,1
         setState('warn', 'Gambar tidak diterima', 'Coba bagikan lagi, atau pilih gambar dari galeri di bawah.');
       });
     }
-    setState('idle', 'Siap menerima struk', 'Bagikan screenshot ke aplikasi ini, atau pilih dari galeri.');
+    setState('idle', 'Siap menerima struk', 'Foto struk dengan kamera, bagikan screenshot ke aplikasi ini, atau pilih dari galeri.');
     return Promise.resolve();
   }
 
   $('#btnSetup').addEventListener('click', simpanSetup);
   $('#btnPick').addEventListener('click', function () { $('#file').click(); });
-  $('#file').addEventListener('change', function (e) {
-    var f = e.target.files && e.target.files[0];
-    if (f) kirim(f).then(function () { $('#file').value = ''; });
+  $('#btnCam').addEventListener('click', function () { $('#fileCam').click(); });
+  ['file', 'fileCam'].forEach(function (id) {
+    $('#' + id).addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (f) kirim(f).then(function () { $('#' + id).value = ''; });
+    });
   });
   $('#tabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) gantiTab(b.dataset.t); });
   $('#btnMic').addEventListener('click', function () { if (V.rec) berhentiRekam(); else mulaiRekam(); });
